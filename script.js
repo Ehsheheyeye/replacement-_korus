@@ -1,83 +1,27 @@
-/* app.js */
-/*
- * Inventory & Pending Manager - Application Logic
- * Purpose: Handle state management, form interactions, table rendering, and filtering.
- * 
- * BACKEND INTEGRATION NOTES:
- * --------------------------
- * To replace localStorage with Firebase/Firestore:
- * 1. Replace loadState() with an async function that fetches from Firestore
- * 2. Replace saveState() with an async function that writes to Firestore
- * 3. Add real-time listeners for live updates across clients
- * Example:
- *   async function loadState() {
- *       const doc = await firebase.firestore().collection('inventory').doc('main').get();
- *       return doc.exists ? doc.data() : getDefaultState();
- *   }
- *   async function saveState(state) {
- *       await firebase.firestore().collection('inventory').doc('main').set(state);
- *   }
- */
-
-// ============ CONSTANTS ============
-const STORAGE_KEY = 'simple_pending_v1';
+/* script.js */
+// ============ CONSTANTS & CONFIG ============
+const STORAGE_KEY = 'inventory_app_v2'; // Updated key for new version
 
 // ============ STATE MANAGEMENT ============
 
-/**
- * Returns default state with seed data for first-time users
- */
 function getDefaultState() {
     const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    
     return {
-        entries: [
-            {
-                id: generateId(),
-                party: 'ABC Electronics',
-                item: 'Laptop Charger',
-                qty: 2,
-                action: 'Pending',
-                status: 'Open',
-                date: today,
-                notes: 'Awaiting repair confirmation'
-            },
-            {
-                id: generateId(),
-                party: 'XYZ Supplies',
-                item: 'Printer Cartridges',
-                qty: 5,
-                action: 'Collected',
-                status: 'Closed',
-                date: yesterday,
-                notes: 'Bulk order received'
-            }
-        ],
-        parties: ['ABC Electronics', 'XYZ Supplies', 'Tech Solutions', 'Office Depot']
+        entries: [],
+        parties: ['ABC Electronics', 'XYZ Supplies', 'Home Services'] // Seed data
     };
 }
 
-/**
- * Load state from localStorage
- * REPLACE THIS FUNCTION for backend integration
- */
 function loadState() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
+        if (stored) return JSON.parse(stored);
     } catch (e) {
         console.error('Error loading state:', e);
     }
     return getDefaultState();
 }
 
-/**
- * Save state to localStorage
- * REPLACE THIS FUNCTION for backend integration
- */
 function saveState(state) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -86,9 +30,6 @@ function saveState(state) {
     }
 }
 
-/**
- * Generate unique ID for entries
- */
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
@@ -96,115 +37,132 @@ function generateId() {
 // ============ APPLICATION STATE ============
 let state = loadState();
 
-// ============ DOM REFERENCES ============
+// ============ DOM ELEMENTS ============
+// Views
+const listView = document.getElementById('listView');
+const formView = document.getElementById('formView');
+const navBtns = document.querySelectorAll('.nav-btn');
+
+// Form
 const entryForm = document.getElementById('entryForm');
 const editIdInput = document.getElementById('editId');
 const partyInput = document.getElementById('party');
+const partyDatalist = document.getElementById('partyList');
 const itemInput = document.getElementById('item');
 const qtyInput = document.getElementById('qty');
 const actionSelect = document.getElementById('action');
 const dateInput = document.getElementById('entryDate');
 const notesInput = document.getElementById('notes');
-const autoCloseCheckbox = document.getElementById('autoClose');
-const clearBtn = document.getElementById('clearBtn');
-const partyDatalist = document.getElementById('partyList');
+const formTitle = document.getElementById('formTitle');
+const cancelBtn = document.getElementById('cancelBtn');
+
+// List & Controls
 const searchInput = document.getElementById('searchInput');
 const statusFilter = document.getElementById('statusFilter');
-const showPendingBtn = document.getElementById('showPendingBtn');
-const exportCsvBtn = document.getElementById('exportCsvBtn');
-const entriesBody = document.getElementById('entriesBody');
+const entriesList = document.getElementById('entriesList');
 const noResultsMsg = document.getElementById('noResults');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
 
 // ============ INITIALIZATION ============
 
-/**
- * Initialize the application
- */
 function init() {
-    // Set default date to today
+    // 1. Set default date to today
     dateInput.value = new Date().toISOString().split('T')[0];
     
-    // Populate party datalist
+    // 2. Load party suggestions
     updatePartyDatalist();
     
-    // Render table
-    renderTable();
+    // 3. Render initial list
+    renderList();
     
-    // Attach event listeners
+    // 4. Events
     attachEventListeners();
 }
 
-/**
- * Attach all event listeners
- */
 function attachEventListeners() {
-    // Form submission
+    // Navigation
+    navBtns.forEach(btn => {
+        if(btn.dataset.target) {
+            btn.addEventListener('click', () => switchView(btn.dataset.target));
+        }
+    });
+
+    cancelBtn.addEventListener('click', () => switchView('listView'));
+
+    // Form
     entryForm.addEventListener('submit', handleFormSubmit);
-    
-    // Clear button
-    clearBtn.addEventListener('click', clearForm);
-    
-    // Search and filters
-    searchInput.addEventListener('input', renderTable);
-    statusFilter.addEventListener('change', renderTable);
-    
-    // Show Pending button
-    showPendingBtn.addEventListener('click', showPendingOnly);
-    
-    // Export CSV
+
+    // Search & Filter
+    searchInput.addEventListener('input', renderList);
+    statusFilter.addEventListener('change', renderList);
+
+    // List Operations (Delete/Edit/Close)
+    entriesList.addEventListener('click', handleListOps);
+
+    // Export
     exportCsvBtn.addEventListener('click', exportToCsv);
-    
-    // Table operations (delegated)
-    entriesBody.addEventListener('click', handleTableOps);
 }
 
-// ============ PARTY AUTOCOMPLETE ============
+// ============ VIEW NAVIGATION ============
 
-/**
- * Update the party datalist with learned names
- */
+function switchView(viewName) {
+    // Toggle View Visibility
+    if (viewName === 'listView') {
+        listView.classList.remove('hidden');
+        formView.classList.add('hidden');
+        resetForm(); // Clear form when going back to list
+    } else if (viewName === 'formView') {
+        listView.classList.add('hidden');
+        formView.classList.remove('hidden');
+        // Ensure date is set when opening form
+        if(!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
+        partyInput.focus();
+    }
+
+    // Update Bottom Nav Styling
+    navBtns.forEach(btn => {
+        if (btn.dataset.target === viewName) {
+            btn.classList.add('active', 'text-blue-600');
+            btn.classList.remove('text-gray-400');
+        } else if (btn.dataset.target) {
+            btn.classList.remove('active', 'text-blue-600');
+            btn.classList.add('text-gray-400');
+        }
+    });
+}
+
+// ============ PARTY AUTO-SUGGESTION ============
+
 function updatePartyDatalist() {
     partyDatalist.innerHTML = '';
-    state.parties.forEach(party => {
+    // Sort parties alphabetically for easier finding
+    state.parties.sort().forEach(party => {
         const option = document.createElement('option');
         option.value = party;
         partyDatalist.appendChild(option);
     });
 }
 
-/**
- * Learn a new party name (add if not exists)
- */
 function learnParty(partyName) {
     const trimmed = partyName.trim();
     if (trimmed && !state.parties.includes(trimmed)) {
         state.parties.push(trimmed);
-        state.parties.sort();
-        updatePartyDatalist();
+        updatePartyDatalist(); // Refresh list immediately
+        saveState(state); // Persist immediately
     }
 }
 
 // ============ FORM HANDLING ============
 
-/**
- * Handle form submission
- */
 function handleFormSubmit(e) {
     e.preventDefault();
     
     const editId = editIdInput.value;
-    const autoClose = autoCloseCheckbox.checked;
     const action = actionSelect.value;
     
-    // Determine status
-    let status = 'Open';
-    if (action === 'Pending') {
-        status = 'Open';
-    } else if (autoClose && (action === 'Given' || action === 'Delivered')) {
-        status = 'Closed';
-    } else if (action !== 'Pending') {
-        status = 'Closed';
-    }
+    // Simple logic: If action is Pending, status is Open. Otherwise Closed.
+    // (Auto-close feature removed as requested)
+    let status = (action === 'Pending') ? 'Open' : 'Closed';
     
     const entry = {
         id: editId || generateId(),
@@ -217,43 +175,34 @@ function handleFormSubmit(e) {
         notes: notesInput.value.trim()
     };
     
-    // Learn the party name
+    // Store new party name for future suggestions
     learnParty(entry.party);
     
     if (editId) {
-        // Editing existing entry - find and update
+        // Update existing
         const index = state.entries.findIndex(e => e.id === editId);
-        if (index !== -1) {
-            state.entries[index] = entry;
-        }
+        if (index !== -1) state.entries[index] = entry;
     } else {
-        // New entry - add to top
+        // Add new to top
         state.entries.unshift(entry);
     }
     
-    // Save and re-render
     saveState(state);
-    renderTable();
-    clearForm();
+    renderList();
+    switchView('listView'); // Go back to list automatically
 }
 
-/**
- * Clear the form
- */
-function clearForm() {
+function resetForm() {
     editIdInput.value = '';
     partyInput.value = '';
     itemInput.value = '';
     qtyInput.value = '1';
     actionSelect.value = 'Pending';
-    dateInput.value = new Date().toISOString().split('T')[0];
     notesInput.value = '';
-    partyInput.focus();
+    dateInput.value = new Date().toISOString().split('T')[0];
+    formTitle.textContent = 'Add New Entry';
 }
 
-/**
- * Populate form for editing
- */
 function populateFormForEdit(entry) {
     editIdInput.value = entry.id;
     partyInput.value = entry.party;
@@ -262,200 +211,148 @@ function populateFormForEdit(entry) {
     actionSelect.value = entry.action;
     dateInput.value = entry.date;
     notesInput.value = entry.notes;
-    partyInput.focus();
     
-    // Scroll to form
-    entryForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    formTitle.textContent = 'Edit Entry';
+    switchView('formView');
 }
 
-// ============ TABLE RENDERING ============
+// ============ LIST RENDERING ============
 
-/**
- * Get filtered entries based on search and status filter
- */
 function getFilteredEntries() {
-    const searchTerm = searchInput.value.toLowerCase().trim();
-    const statusValue = statusFilter.value;
+    const term = searchInput.value.toLowerCase().trim();
+    const statusVal = statusFilter.value;
     
     return state.entries.filter(entry => {
-        // Status filter
-        if (statusValue !== 'all' && entry.status !== statusValue) {
-            return false;
-        }
+        if (statusVal !== 'all' && entry.status !== statusVal) return false;
         
-        // Search filter
-        if (searchTerm) {
-            const searchable = [
-                entry.party,
-                entry.item,
-                entry.notes
-            ].join(' ').toLowerCase();
-            
-            if (!searchable.includes(searchTerm)) {
-                return false;
-            }
+        if (term) {
+            const str = `${entry.party} ${entry.item} ${entry.notes}`.toLowerCase();
+            if (!str.includes(term)) return false;
         }
-        
         return true;
     });
 }
 
-/**
- * Render the entries table
- */
-function renderTable() {
+function renderList() {
     const filtered = getFilteredEntries();
     
     if (filtered.length === 0) {
-        entriesBody.innerHTML = '';
-        noResultsMsg.hidden = false;
+        entriesList.innerHTML = '';
+        noResultsMsg.classList.remove('hidden');
         return;
     }
     
-    noResultsMsg.hidden = true;
+    noResultsMsg.classList.add('hidden');
     
-    entriesBody.innerHTML = filtered.map(entry => `
-        <tr data-id="${entry.id}">
-            <td>${escapeHtml(entry.date)}</td>
-            <td>${escapeHtml(entry.party)}</td>
-            <td>${escapeHtml(entry.item)}</td>
-            <td>${entry.qty}</td>
-            <td><span class="action-badge">${escapeHtml(entry.action)}</span></td>
-            <td>
-                <span class="status-badge status-${entry.status.toLowerCase()}">
+    entriesList.innerHTML = filtered.map(entry => {
+        // Status Colors
+        const isClosed = entry.status === 'Closed';
+        const statusClass = isClosed 
+            ? 'bg-green-100 text-green-700 border-green-200' 
+            : 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            
+        return `
+        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative transition hover:shadow-md" data-id="${entry.id}">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h3 class="font-bold text-gray-800 text-base">${escapeHtml(entry.party)}</h3>
+                    <p class="text-xs text-gray-500">${entry.date}</p>
+                </div>
+                <span class="px-2 py-1 text-xs font-bold rounded-full border ${statusClass}">
                     ${entry.status}
                 </span>
-            </td>
-            <td>${escapeHtml(entry.notes || '-')}</td>
-            <td class="ops-cell">
-                ${entry.status === 'Open' ? 
-                    `<button class="btn btn-small btn-success" data-action="close" aria-label="Mark as closed">✓ Close</button>` 
-                    : ''}
-                <button class="btn btn-small btn-secondary" data-action="edit" aria-label="Edit entry">✎ Edit</button>
-                <button class="btn btn-small btn-danger" data-action="delete" aria-label="Delete entry">✕</button>
-            </td>
-        </tr>
-    `).join('');
+            </div>
+            
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-sm text-gray-700">
+                    <span class="font-medium">${entry.qty}x</span> ${escapeHtml(entry.item)}
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-2 rounded text-xs text-gray-600 mb-3 border border-gray-100">
+                <strong>Action:</strong> ${escapeHtml(entry.action)} <br>
+                ${entry.notes ? `<div class="mt-1 italic text-gray-500">"${escapeHtml(entry.notes)}"</div>` : ''}
+            </div>
+
+            <div class="flex gap-2 justify-end border-t pt-2 mt-2">
+                ${!isClosed ? 
+                    `<button class="flex-1 py-1.5 px-3 bg-green-50 text-green-600 rounded text-xs font-medium hover:bg-green-100" data-action="close">
+                        <i class="fas fa-check"></i> Close
+                    </button>` : ''
+                }
+                <button class="py-1.5 px-3 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100" data-action="edit">
+                    Edit
+                </button>
+                <button class="py-1.5 px-3 bg-red-50 text-red-600 rounded text-xs font-medium hover:bg-red-100" data-action="delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
 }
 
-/**
- * Escape HTML to prevent XSS
- */
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    if (!text) return '';
+    return text.replace(/&/g, "&amp;")
+               .replace(/</g, "&lt;")
+               .replace(/>/g, "&gt;")
+               .replace(/"/g, "&quot;")
+               .replace(/'/g, "&#039;");
 }
 
-// ============ TABLE OPERATIONS ============
+// ============ OPS ============
 
-/**
- * Handle table button clicks (delegated)
- */
-function handleTableOps(e) {
+function handleListOps(e) {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     
     const action = btn.dataset.action;
-    const row = btn.closest('tr');
-    const id = row.dataset.id;
+    const card = btn.closest('[data-id]');
+    const id = card.dataset.id;
     
-    switch (action) {
-        case 'close':
-            markAsClosed(id);
-            break;
-        case 'edit':
-            editEntry(id);
-            break;
-        case 'delete':
-            deleteEntry(id);
-            break;
+    if (action === 'delete') {
+        if(confirm('Delete this entry?')) {
+            state.entries = state.entries.filter(e => e.id !== id);
+            saveState(state);
+            renderList();
+        }
+    } else if (action === 'edit') {
+        const entry = state.entries.find(e => e.id === id);
+        if (entry) populateFormForEdit(entry);
+    } else if (action === 'close') {
+        const entry = state.entries.find(e => e.id === id);
+        if (entry) {
+            entry.status = 'Closed';
+            saveState(state);
+            renderList();
+        }
     }
 }
 
-/**
- * Mark entry as closed
- */
-function markAsClosed(id) {
-    const entry = state.entries.find(e => e.id === id);
-    if (entry) {
-        entry.status = 'Closed';
-        saveState(state);
-        renderTable();
-    }
-}
-
-/**
- * Edit entry (populate form and remove from list)
- */
-function editEntry(id) {
-    const entry = state.entries.find(e => e.id === id);
-    if (entry) {
-        populateFormForEdit(entry);
-    }
-}
-
-/**
- * Delete entry
- */
-function deleteEntry(id) {
-    if (confirm('Are you sure you want to delete this entry?')) {
-        state.entries = state.entries.filter(e => e.id !== id);
-        saveState(state);
-        renderTable();
-    }
-}
-
-// ============ FILTERS ============
-
-/**
- * Show only pending entries
- */
-function showPendingOnly() {
-    searchInput.value = '';
-    statusFilter.value = 'Open';
-    renderTable();
-}
-
-// ============ EXPORT ============
-
-/**
- * Export current filtered entries to CSV
- */
 function exportToCsv() {
     const filtered = getFilteredEntries();
+    if (!filtered.length) return alert('Nothing to export');
     
-    if (filtered.length === 0) {
-        alert('No entries to export.');
-        return;
-    }
-    
-    // CSV headers
     const headers = ['Date', 'Party', 'Item', 'Qty', 'Action', 'Status', 'Notes'];
-    
-    // CSV rows
-    const rows = filtered.map(entry => [
-        entry.date,
-        `"${entry.party.replace(/"/g, '""')}"`,
-        `"${entry.item.replace(/"/g, '""')}"`,
-        entry.qty,
-        entry.action,
-        entry.status,
-        `"${(entry.notes || '').replace(/"/g, '""')}"`
+    const rows = filtered.map(e => [
+        e.date, 
+        `"${e.party}"`, 
+        `"${e.item}"`, 
+        e.qty, 
+        e.action, 
+        e.status, 
+        `"${e.notes}"`
     ].join(','));
     
-    // Combine
     const csv = [headers.join(','), ...rows].join('\n');
-    
-    // Download
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
 }
 
-// ============ START ============
+// Start
 document.addEventListener('DOMContentLoaded', init);
