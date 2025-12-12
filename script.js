@@ -1,358 +1,400 @@
 /* script.js */
-// ============ CONSTANTS & CONFIG ============
-const STORAGE_KEY = 'inventory_app_v2'; // Updated key for new version
 
-// ============ STATE MANAGEMENT ============
+// ============ CONFIG ============
+const STORAGE_KEY = 'inventory_premium_v1';
 
+// ============ STATE ============
 function getDefaultState() {
-    const today = new Date().toISOString().split('T')[0];
     return {
         entries: [],
-        parties: ['ABC Electronics', 'XYZ Supplies', 'Home Services'] // Seed data
+        parties: [] 
     };
 }
 
 function loadState() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) return JSON.parse(stored);
-    } catch (e) {
-        console.error('Error loading state:', e);
+        return stored ? JSON.parse(stored) : getDefaultState();
+    } catch {
+        return getDefaultState();
     }
-    return getDefaultState();
 }
 
 function saveState(state) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-        console.error('Error saving state:', e);
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
-// ============ APPLICATION STATE ============
 let state = loadState();
+let currentFilter = 'all'; // 'all', 'Open', 'Closed', 'Collected', 'Given'
+let showClosedHistory = false; // Toggle for history view
 
-// ============ DOM ELEMENTS ============
-// Views
+// ============ DOM ============
 const listView = document.getElementById('listView');
 const formView = document.getElementById('formView');
-const navBtns = document.querySelectorAll('.nav-btn');
+const entriesList = document.getElementById('entriesList');
+const searchInput = document.getElementById('searchInput');
+const headerDate = document.getElementById('headerDate');
+const partyDatalist = document.getElementById('partyList');
 
 // Form
 const entryForm = document.getElementById('entryForm');
-const editIdInput = document.getElementById('editId');
-const partyInput = document.getElementById('party');
-const partyDatalist = document.getElementById('partyList');
-const itemInput = document.getElementById('item');
-const qtyInput = document.getElementById('qty');
-const actionSelect = document.getElementById('action');
-const dateInput = document.getElementById('entryDate');
-const notesInput = document.getElementById('notes');
 const formTitle = document.getElementById('formTitle');
 const cancelBtn = document.getElementById('cancelBtn');
 
-// List & Controls
-const searchInput = document.getElementById('searchInput');
-const statusFilter = document.getElementById('statusFilter');
-const entriesList = document.getElementById('entriesList');
-const noResultsMsg = document.getElementById('noResults');
-const exportCsvBtn = document.getElementById('exportCsvBtn');
-
-// ============ INITIALIZATION ============
-
+// ============ INIT ============
 function init() {
-    // 1. Set default date to today
-    dateInput.value = new Date().toISOString().split('T')[0];
-    
-    // 2. Load party suggestions
+    // Set Header Date
+    const options = { weekday: 'long', month: 'short', day: 'numeric' };
+    headerDate.textContent = new Date().toLocaleDateString('en-US', options);
+
+    // Default Form Date
+    document.getElementById('entryDate').valueAsDate = new Date();
+
     updatePartyDatalist();
-    
-    // 3. Render initial list
     renderList();
-    
-    // 4. Events
-    attachEventListeners();
+    attachEvents();
 }
 
-function attachEventListeners() {
-    // Navigation
-    navBtns.forEach(btn => {
-        if(btn.dataset.target) {
-            btn.addEventListener('click', () => switchView(btn.dataset.target));
-        }
+function attachEvents() {
+    // Nav Navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.target;
+            
+            // Handle History Toggle
+            if (target === 'historyView') {
+                showClosedHistory = true;
+                currentFilter = 'Closed'; // Force filter
+                switchView('listView'); // Reuse list view but with filtered data
+                updateNavState('historyView');
+                renderList();
+            } 
+            else if (target === 'listView') {
+                showClosedHistory = false;
+                currentFilter = 'all';
+                switchView('listView');
+                updateNavState('listView');
+                renderList();
+            } 
+            else {
+                showClosedHistory = false;
+                switchView(target);
+                updateNavState(target);
+            }
+        });
     });
 
-    cancelBtn.addEventListener('click', () => switchView('listView'));
+    // Filter Chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            e.target.classList.add('active');
+            currentFilter = e.target.dataset.filter;
+            showClosedHistory = false; // Reset history mode if clicking chips
+            renderList();
+        });
+    });
 
     // Form
     entryForm.addEventListener('submit', handleFormSubmit);
+    cancelBtn.addEventListener('click', () => {
+        switchView('listView');
+        updateNavState('listView');
+    });
 
-    // Search & Filter
+    // Search
     searchInput.addEventListener('input', renderList);
-    statusFilter.addEventListener('change', renderList);
 
-    // List Operations (Delete/Edit/Close)
-    entriesList.addEventListener('click', handleListOps);
-
-    // Export
-    exportCsvBtn.addEventListener('click', exportToCsv);
+    // Card Actions (Delegation)
+    entriesList.addEventListener('click', handleCardActions);
 }
 
-// ============ VIEW NAVIGATION ============
-
+// ============ VIEW LOGIC ============
 function switchView(viewName) {
-    // Toggle View Visibility
     if (viewName === 'listView') {
         listView.classList.remove('hidden');
         formView.classList.add('hidden');
-        resetForm(); // Clear form when going back to list
-    } else if (viewName === 'formView') {
+    } else {
         listView.classList.add('hidden');
         formView.classList.remove('hidden');
-        // Ensure date is set when opening form
-        if(!dateInput.value) dateInput.value = new Date().toISOString().split('T')[0];
-        partyInput.focus();
+        document.getElementById('party').focus();
     }
+}
 
-    // Update Bottom Nav Styling
-    navBtns.forEach(btn => {
-        if (btn.dataset.target === viewName) {
-            btn.classList.add('active', 'text-blue-600');
-            btn.classList.remove('text-gray-400');
-        } else if (btn.dataset.target) {
-            btn.classList.remove('active', 'text-blue-600');
-            btn.classList.add('text-gray-400');
+function updateNavState(activeTarget) {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.target === activeTarget) {
+            btn.classList.add('active');
+            // Specific styling for icons based on state
+            const icon = btn.querySelector('.icon-container');
+            if(icon) icon.classList.remove('text-slate-400');
+        } else {
+            btn.classList.remove('active');
+            const icon = btn.querySelector('.icon-container');
+            if(icon) icon.classList.add('text-slate-400');
         }
     });
 }
 
-// ============ PARTY AUTO-SUGGESTION ============
-
-function updatePartyDatalist() {
-    partyDatalist.innerHTML = '';
-    // Sort parties alphabetically for easier finding
-    state.parties.sort().forEach(party => {
-        const option = document.createElement('option');
-        option.value = party;
-        partyDatalist.appendChild(option);
-    });
-}
-
-function learnParty(partyName) {
-    const trimmed = partyName.trim();
-    if (trimmed && !state.parties.includes(trimmed)) {
-        state.parties.push(trimmed);
-        updatePartyDatalist(); // Refresh list immediately
-        saveState(state); // Persist immediately
-    }
-}
-
-// ============ FORM HANDLING ============
+// ============ CORE FUNCTIONS ============
 
 function handleFormSubmit(e) {
     e.preventDefault();
+    const editId = document.getElementById('editId').value;
+    const party = document.getElementById('party').value.trim();
     
-    const editId = editIdInput.value;
-    const action = actionSelect.value;
-    
-    // Simple logic: If action is Pending, status is Open. Otherwise Closed.
-    // (Auto-close feature removed as requested)
-    let status = (action === 'Pending') ? 'Open' : 'Closed';
-    
+    // Status Logic: If Action is Pending/Given/Collected -> Open.
+    const action = document.getElementById('action').value;
+    const status = 'Open'; // Always open initially unless manually closed later
+
     const entry = {
         id: editId || generateId(),
-        party: partyInput.value.trim(),
-        item: itemInput.value.trim(),
-        qty: parseInt(qtyInput.value, 10) || 1,
+        party: party,
+        item: document.getElementById('item').value.trim(),
+        qty: document.getElementById('qty').value,
         action: action,
         status: status,
-        date: dateInput.value,
-        notes: notesInput.value.trim()
+        date: document.getElementById('entryDate').value,
+        notes: document.getElementById('notes').value.trim(),
+        timestamp: Date.now() // for sorting
     };
-    
-    // Store new party name for future suggestions
-    learnParty(entry.party);
-    
+
+    learnParty(party);
+
     if (editId) {
-        // Update existing
-        const index = state.entries.findIndex(e => e.id === editId);
-        if (index !== -1) state.entries[index] = entry;
+        const idx = state.entries.findIndex(x => x.id === editId);
+        if (idx > -1) state.entries[idx] = entry;
     } else {
-        // Add new to top
         state.entries.unshift(entry);
     }
-    
+
     saveState(state);
+    resetForm();
+    switchView('listView');
+    updateNavState('listView');
     renderList();
-    switchView('listView'); // Go back to list automatically
 }
 
-function resetForm() {
-    editIdInput.value = '';
-    partyInput.value = '';
-    itemInput.value = '';
-    qtyInput.value = '1';
-    actionSelect.value = 'Pending';
-    notesInput.value = '';
-    dateInput.value = new Date().toISOString().split('T')[0];
-    formTitle.textContent = 'Add New Entry';
-}
-
-function populateFormForEdit(entry) {
-    editIdInput.value = entry.id;
-    partyInput.value = entry.party;
-    itemInput.value = entry.item;
-    qtyInput.value = entry.qty;
-    actionSelect.value = entry.action;
-    dateInput.value = entry.date;
-    notesInput.value = entry.notes;
+function handleCardActions(e) {
+    const btn = e.target.closest('button');
+    if (!btn || !btn.dataset.action) return;
     
-    formTitle.textContent = 'Edit Entry';
-    switchView('formView');
-}
+    const id = btn.dataset.id;
+    const entry = state.entries.find(x => x.id === id);
+    if (!entry) return;
 
-// ============ LIST RENDERING ============
+    const actionType = btn.dataset.action;
 
-function getFilteredEntries() {
-    const term = searchInput.value.toLowerCase().trim();
-    const statusVal = statusFilter.value;
-    
-    return state.entries.filter(entry => {
-        if (statusVal !== 'all' && entry.status !== statusVal) return false;
-        
-        if (term) {
-            const str = `${entry.party} ${entry.item} ${entry.notes}`.toLowerCase();
-            if (!str.includes(term)) return false;
+    // --- SMART LOGIC ---
+    if (actionType === 'return') {
+        // "I collected it, now I'm returning it"
+        if(confirm(`Mark "${entry.item}" as Returned to ${entry.party}?`)) {
+            entry.status = 'Closed';
+            entry.action = 'Returned'; // Update action history
+            saveState(state);
+            renderList();
         }
-        return true;
+    } 
+    else if (actionType === 'receive') {
+        // "I gave it, now I'm receiving it back"
+        if(confirm(`Mark "${entry.item}" as Received back from ${entry.party}?`)) {
+            entry.status = 'Closed';
+            entry.action = 'Received Back'; // Update action history
+            saveState(state);
+            renderList();
+        }
+    }
+    else if (actionType === 'close') {
+        // Just close it (keep it or done)
+        entry.status = 'Closed';
+        saveState(state);
+        renderList();
+    }
+    else if (actionType === 'edit') {
+        populateForm(entry);
+    }
+    else if (actionType === 'delete') {
+        if(confirm('Delete this entry permanently?')) {
+            state.entries = state.entries.filter(x => x.id !== id);
+            saveState(state);
+            renderList();
+        }
+    }
+}
+
+// ============ RENDERING ============
+
+function renderList() {
+    const term = searchInput.value.toLowerCase();
+    
+    // Filtering Logic
+    let filtered = state.entries.filter(e => {
+        // 1. Text Search
+        const textMatch = (e.party + e.item + e.notes).toLowerCase().includes(term);
+        if (!textMatch) return false;
+
+        // 2. Tab/Filter Logic
+        if (showClosedHistory) {
+            return e.status === 'Closed';
+        } else {
+            // Main List: Show Open items
+            if (e.status === 'Closed') return false;
+            // Chip Filter
+            if (currentFilter !== 'all' && currentFilter !== 'Open' && e.action !== currentFilter) return false;
+            return true;
+        }
+    });
+
+    // Sort by newest
+    filtered.sort((a, b) => b.timestamp - a.timestamp);
+
+    const container = entriesList;
+    container.innerHTML = '';
+
+    if (filtered.length === 0) {
+        document.getElementById('noResults').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('noResults').classList.add('hidden');
+
+    filtered.forEach(entry => {
+        const html = createCardHtml(entry);
+        container.insertAdjacentHTML('beforeend', html);
     });
 }
 
-function renderList() {
-    const filtered = getFilteredEntries();
+function createCardHtml(entry) {
+    const isClosed = entry.status === 'Closed';
     
-    if (filtered.length === 0) {
-        entriesList.innerHTML = '';
-        noResultsMsg.classList.remove('hidden');
-        return;
+    // Badge Colors
+    let badgeClass = 'bg-slate-100 text-slate-600';
+    let icon = 'fa-circle';
+    
+    if (entry.action === 'Given') { badgeClass = 'bg-orange-100 text-orange-700'; icon = 'fa-arrow-right'; }
+    else if (entry.action === 'Collected') { badgeClass = 'bg-green-100 text-green-700'; icon = 'fa-arrow-left'; }
+    else if (entry.action === 'Pending') { badgeClass = 'bg-blue-50 text-blue-600'; icon = 'fa-clock'; }
+    
+    if (isClosed) { badgeClass = 'bg-gray-100 text-gray-400 line-through'; }
+
+    // Smart Buttons Logic
+    let buttonsHtml = '';
+    
+    if (!isClosed) {
+        // Scenario 1: I Gave it -> Need to Receive Back
+        if (entry.action === 'Given' || entry.action === 'Sent for Repair') {
+            buttonsHtml = `
+                <button data-action="receive" data-id="${entry.id}" class="flex-1 py-2 px-3 bg-white border border-slate-200 shadow-sm rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-undo text-blue-500"></i> Receive Back
+                </button>
+            `;
+        } 
+        // Scenario 2: I Collected it -> Need to Return it
+        else if (entry.action === 'Collected' || entry.action === 'Collected for Refill') {
+            buttonsHtml = `
+                <button data-action="return" data-id="${entry.id}" class="flex-1 py-2 px-3 bg-white border border-slate-200 shadow-sm rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-reply text-orange-500"></i> Return Item
+                </button>
+                <button data-action="close" data-id="${entry.id}" class="py-2 px-3 bg-slate-100 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-200" title="Keep it / Done">
+                    Keep
+                </button>
+            `;
+        }
+        // Scenario 3: Pending / General -> Just Mark Done
+        else {
+            buttonsHtml = `
+                <button data-action="close" data-id="${entry.id}" class="flex-1 py-2 px-3 bg-blue-600 shadow-md shadow-blue-200 rounded-xl text-xs font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i> Mark Done
+                </button>
+            `;
+        }
     }
-    
-    noResultsMsg.classList.add('hidden');
-    
-    entriesList.innerHTML = filtered.map(entry => {
-        // Status Colors
-        const isClosed = entry.status === 'Closed';
-        const statusClass = isClosed 
-            ? 'bg-green-100 text-green-700 border-green-200' 
-            : 'bg-yellow-100 text-yellow-700 border-yellow-200';
-            
-        return `
-        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative transition hover:shadow-md" data-id="${entry.id}">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h3 class="font-bold text-gray-800 text-base">${escapeHtml(entry.party)}</h3>
-                    <p class="text-xs text-gray-500">${entry.date}</p>
-                </div>
-                <span class="px-2 py-1 text-xs font-bold rounded-full border ${statusClass}">
-                    ${entry.status}
+
+    return `
+    <div class="entry-card bg-white rounded-3xl p-5 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.05)] border border-slate-100 relative group animate-[fadeIn_0.3s_ease-out]">
+        
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClass} mb-2">
+                    <i class="fas ${icon} text-[10px]"></i> ${entry.action}
                 </span>
+                <h3 class="text-lg font-bold text-slate-800 leading-tight ${isClosed ? 'text-slate-400' : ''}">
+                    ${escapeHtml(entry.party)}
+                </h3>
             </div>
-            
-            <div class="flex justify-between items-center mb-2">
-                <div class="text-sm text-gray-700">
-                    <span class="font-medium">${entry.qty}x</span> ${escapeHtml(entry.item)}
-                </div>
-            </div>
-
-            <div class="bg-gray-50 p-2 rounded text-xs text-gray-600 mb-3 border border-gray-100">
-                <strong>Action:</strong> ${escapeHtml(entry.action)} <br>
-                ${entry.notes ? `<div class="mt-1 italic text-gray-500">"${escapeHtml(entry.notes)}"</div>` : ''}
-            </div>
-
-            <div class="flex gap-2 justify-end border-t pt-2 mt-2">
-                ${!isClosed ? 
-                    `<button class="flex-1 py-1.5 px-3 bg-green-50 text-green-600 rounded text-xs font-medium hover:bg-green-100" data-action="close">
-                        <i class="fas fa-check"></i> Close
-                    </button>` : ''
-                }
-                <button class="py-1.5 px-3 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100" data-action="edit">
-                    Edit
-                </button>
-                <button class="py-1.5 px-3 bg-red-50 text-red-600 rounded text-xs font-medium hover:bg-red-100" data-action="delete">
-                    <i class="fas fa-trash"></i>
-                </button>
+            <div class="text-right">
+                <span class="block text-2xl font-bold text-slate-800 ${isClosed ? 'text-slate-300' : ''}">${entry.qty}</span>
+                <span class="text-[10px] text-slate-400 font-medium">QTY</span>
             </div>
         </div>
-        `;
-    }).join('');
+
+        <div class="mb-4">
+            <p class="text-sm text-slate-600 font-medium ${isClosed ? 'text-slate-400' : ''}">
+                ${escapeHtml(entry.item)}
+            </p>
+            ${entry.notes ? `<p class="text-xs text-slate-400 mt-1 italic">"${escapeHtml(entry.notes)}"</p>` : ''}
+            <p class="text-[10px] text-slate-300 mt-2 font-medium">${entry.date}</p>
+        </div>
+
+        <div class="flex items-center gap-2 mt-2 pt-3 border-t border-slate-50">
+            ${buttonsHtml}
+            
+            <button data-action="edit" data-id="${entry.id}" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-all ml-auto">
+                <i class="fas fa-pen text-xs"></i>
+            </button>
+            <button data-action="delete" data-id="${entry.id}" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                <i class="fas fa-trash text-xs"></i>
+            </button>
+        </div>
+    </div>
+    `;
+}
+
+// ============ UTILS ============
+function resetForm() {
+    document.getElementById('editId').value = '';
+    document.getElementById('party').value = '';
+    document.getElementById('item').value = '';
+    document.getElementById('qty').value = '1';
+    document.getElementById('notes').value = '';
+    document.getElementById('action').value = 'Pending';
+    document.getElementById('entryDate').valueAsDate = new Date();
+    formTitle.textContent = 'Add Item';
+}
+
+function populateForm(entry) {
+    document.getElementById('editId').value = entry.id;
+    document.getElementById('party').value = entry.party;
+    document.getElementById('item').value = entry.item;
+    document.getElementById('qty').value = entry.qty;
+    document.getElementById('action').value = entry.action;
+    document.getElementById('notes').value = entry.notes;
+    document.getElementById('entryDate').value = entry.date;
+    formTitle.textContent = 'Edit Item';
+    switchView('formView');
+}
+
+function updatePartyDatalist() {
+    partyDatalist.innerHTML = '';
+    state.parties.sort().forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        partyDatalist.appendChild(opt);
+    });
+}
+
+function learnParty(name) {
+    if (name && !state.parties.includes(name)) {
+        state.parties.push(name);
+    }
 }
 
 function escapeHtml(text) {
     if (!text) return '';
-    return text.replace(/&/g, "&amp;")
-               .replace(/</g, "&lt;")
-               .replace(/>/g, "&gt;")
-               .replace(/"/g, "&quot;")
-               .replace(/'/g, "&#039;");
+    return text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ============ OPS ============
-
-function handleListOps(e) {
-    const btn = e.target.closest('button[data-action]');
-    if (!btn) return;
-    
-    const action = btn.dataset.action;
-    const card = btn.closest('[data-id]');
-    const id = card.dataset.id;
-    
-    if (action === 'delete') {
-        if(confirm('Delete this entry?')) {
-            state.entries = state.entries.filter(e => e.id !== id);
-            saveState(state);
-            renderList();
-        }
-    } else if (action === 'edit') {
-        const entry = state.entries.find(e => e.id === id);
-        if (entry) populateFormForEdit(entry);
-    } else if (action === 'close') {
-        const entry = state.entries.find(e => e.id === id);
-        if (entry) {
-            entry.status = 'Closed';
-            saveState(state);
-            renderList();
-        }
-    }
-}
-
-function exportToCsv() {
-    const filtered = getFilteredEntries();
-    if (!filtered.length) return alert('Nothing to export');
-    
-    const headers = ['Date', 'Party', 'Item', 'Qty', 'Action', 'Status', 'Notes'];
-    const rows = filtered.map(e => [
-        e.date, 
-        `"${e.party}"`, 
-        `"${e.item}"`, 
-        e.qty, 
-        e.action, 
-        e.status, 
-        `"${e.notes}"`
-    ].join(','));
-    
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inventory_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-}
-
-// Start
 document.addEventListener('DOMContentLoaded', init);
