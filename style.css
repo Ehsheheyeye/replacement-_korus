@@ -1,33 +1,95 @@
 /* style.css */
 
-/* Simple active state for navigation buttons */
-.nav-btn.active {
-    color: #2563EB; /* Tailwind blue-600 */
+/* Base Font Setup */
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.nav-btn.active span {
+/* Custom Utilities */
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Premium Input Styling */
+.input-field {
+    width: 100%;
+    padding: 14px 16px;
+    background-color: #f8fafc; /* slate-50 */
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: #1e293b; /* slate-800 */
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.input-field:focus {
+    background-color: #ffffff;
+    border-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.label-text {
+    display: block;
+    font-size: 0.75rem;
     font-weight: 600;
+    color: #64748b; /* slate-500 */
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-/* Smooth fade for view switching */
+/* Filter Chips */
+.filter-chip {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #64748b;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.filter-chip.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+/* Nav Active States */
+.nav-btn.active .icon-container {
+    color: #3b82f6;
+}
+.nav-btn.active span {
+    color: #3b82f6;
+}
+
+/* View Transitions */
 main {
-    animation: fadeIn 0.2s ease-in-out;
+    animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0.5; transform: translateY(5px); }
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Custom scrollbar hiding for cleaner mobile look */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+/* Card Hover Effect */
+.entry-card {
+    transition: transform 0.2s, box-shadow 0.2s;
 }
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
+.entry-card:active {
+    transform: scale(0.98);
 }
