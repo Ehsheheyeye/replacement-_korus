@@ -1,0 +1,123 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory & Pending Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Inventory Manager</h1>
+        </header>
+
+        <!-- Entry Form -->
+        <section class="form-section" aria-labelledby="form-heading">
+            <h2 id="form-heading" class="visually-hidden">Add Entry</h2>
+            <form id="entryForm" class="entry-form">
+                <input type="hidden" id="editId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="party">Party</label>
+                        <input type="text" id="party" list="partyList" autocomplete="off" required aria-describedby="party-hint">
+                        <datalist id="partyList"></datalist>
+                        <small id="party-hint" class="hint">Type or select a party name</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="item">Item</label>
+                        <input type="text" id="item" required>
+                    </div>
+                    <div class="form-group form-group-small">
+                        <label for="qty">Qty</label>
+                        <input type="number" id="qty" min="1" value="1" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="action">Action</label>
+                        <select id="action" required>
+                            <option value="Collected">Collected</option>
+                            <option value="Given">Given</option>
+                            <option value="Collected for Refill">Collected for Refill</option>
+                            <option value="Sent for Repair">Sent for Repair</option>
+                            <option value="Pending" selected>Pending</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="entryDate">Date</label>
+                        <input type="date" id="entryDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notes</label>
+                        <input type="text" id="notes" placeholder="Optional notes...">
+                    </div>
+                </div>
+
+                <div class="form-row form-actions">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="autoClose" checked>
+                        <label for="autoClose">Auto close if action is 'Given' or 'Delivered'</label>
+                    </div>
+                    <div class="buttons">
+                        <button type="submit" class="btn btn-primary">Save Entry</button>
+                        <button type="button" id="clearBtn" class="btn btn-secondary">Clear</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- Controls -->
+        <section class="controls-section" aria-labelledby="controls-heading">
+            <h2 id="controls-heading" class="visually-hidden">Table Controls</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="searchInput" class="visually-hidden">Search</label>
+                    <input type="search" id="searchInput" placeholder="🔍 Search party, item, notes..." aria-label="Search entries">
+                </div>
+                <div class="control-group">
+                    <label for="statusFilter" class="visually-hidden">Filter by status</label>
+                    <select id="statusFilter" aria-label="Filter by status">
+                        <option value="all">All Status</option>
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <button id="showPendingBtn" class="btn btn-outline">Show Pending</button>
+                <button id="exportCsvBtn" class="btn btn-outline">Export CSV</button>
+            </div>
+        </section>
+
+        <!-- Entries Table -->
+        <section class="table-section" aria-labelledby="table-heading">
+            <h2 id="table-heading" class="visually-hidden">Entries List</h2>
+            <div class="table-wrapper">
+                <table id="entriesTable" aria-describedby="table-desc">
+                    <caption id="table-desc" class="visually-hidden">List of inventory entries</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Party</th>
+                            <th scope="col">Item</th>
+                            <th scope="col">Qty</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Notes</th>
+                            <th scope="col">Ops</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entriesBody">
+                        <!-- Entries rendered here -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="noResults" class="no-results" hidden>No entries found.</p>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
