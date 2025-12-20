@@ -1,16 +1,11 @@
 /* style.css */
 
-/* Base Font Setup */
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Custom Utilities */
-.pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 20px);
-}
-
+/* Hide scrollbar but allow scrolling */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
@@ -19,77 +14,86 @@ body {
     scrollbar-width: none;
 }
 
-/* Premium Input Styling */
-.input-field {
-    width: 100%;
-    padding: 14px 16px;
-    background-color: #f8fafc; /* slate-50 */
-    border: 1px solid transparent;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    color: #1e293b; /* slate-800 */
-    transition: all 0.2s ease;
-    outline: none;
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 
-.input-field:focus {
-    background-color: #ffffff;
-    border-color: #3b82f6; /* blue-500 */
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-}
-
-.label-text {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b; /* slate-500 */
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-/* Filter Chips */
+/* Custom Filter Chip */
 .filter-chip {
     padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #64748b;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: white;
+    border: 1px solid #f3f4f6;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .filter-chip.active {
-    background: #3b82f6;
+    background: #1f2937; /* Gray-900 */
     color: white;
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    border-color: #1f2937;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-/* Nav Active States */
-.nav-btn.active .icon-container {
-    color: #3b82f6;
-}
-.nav-btn.active span {
-    color: #3b82f6;
-}
-
-/* View Transitions */
-main {
-    animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
 }
 
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+/* Modal Animation Classes */
+.modal-active #formBackdrop {
+    opacity: 1;
+}
+.modal-active #formSheet {
+    transform: translateY(0);
 }
 
-/* Card Hover Effect */
-.entry-card {
-    transition: transform 0.2s, box-shadow 0.2s;
+/* Card Styles */
+.card-entry {
+    background: white;
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.05), 0 1px 4px -2px rgba(0, 0, 0, 0.02);
+    border: 1px solid #f8fafc;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease;
 }
-.entry-card:active {
-    transform: scale(0.98);
+
+.card-entry:active {
+    transform: scale(0.99);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* Action Button */
+.action-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
