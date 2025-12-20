@@ -1,35 +1,81 @@
-/* script.js */
+// script.js
 
-const STORAGE_KEY = 'tracker_pro_v1';
-
-// --- STATE MANAGEMENT ---
-let state = {
-    entries: [],
-    parties: [] // Auto-learned list of party names
-};
+// CONFIG
+const STORAGE_KEY = 'service_tracker_fixed_v3';
+let state = { entries: [], parties: [] };
+let currentFilter = 'pending';
 
 // --- INIT ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadState();
-    
+window.onload = function() {
     // Set Date
-    const dateOpts = { weekday: 'long', day: 'numeric', month: 'short' };
-    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', dateOpts);
-
-    renderList();
-    setupEventListeners();
-});
-
-// --- CORE LOGIC ---
-
-function loadState() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-        state = JSON.parse(raw);
+    const dateEl = document.getElementById('currentDate');
+    if (dateEl) {
+        dateEl.innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     }
-    // Sort parties alphabetically for suggestions
-    state.parties.sort();
-    updatePartyDatalist();
+    
+    // Load Data
+    loadState();
+    renderList();
+};
+
+// --- MODAL FUNCTIONS ---
+function openModal() {
+    const modal = document.getElementById('formModal');
+    modal.classList.add('open');
+    // Focus input after animation
+    setTimeout(() => {
+        const input = document.getElementById('partyInput');
+        if(input) input.focus();
+    }, 100);
+}
+
+function closeModal() {
+    const modal = document.getElementById('formModal');
+    modal.classList.remove('open');
+}
+
+// --- DATA LOGIC ---
+function loadState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            state = JSON.parse(raw);
+        } else {
+            // Try to recover data from older versions if this is a new file
+            const oldV1 = localStorage.getItem('inventory_premium_v1');
+            if (oldV1) migrateData(JSON.parse(oldV1));
+        }
+        updatePartyDatalist();
+    } catch (e) {
+        console.log('Data error', e);
+        state = { entries: [], parties: [] };
+    }
+}
+
+function migrateData(oldState) {
+    if(!oldState.entries) return;
+    state.parties = oldState.parties || [];
+    
+    state.entries = oldState.entries.map(e => {
+        let job = 'sale';
+        let status = 'closed';
+        let step = 'done';
+        const isPending = (e.status === 'Open' || e.status === 'Pending');
+
+        if (e.action && e.action.includes('Given')) {
+            job = 'standby';
+            if(isPending) { status = 'pending'; step = 'to_collect'; }
+        } else if (e.action && (e.action.includes('Collected') || e.action.includes('Repair'))) {
+            job = 'repair';
+            if(isPending) { status = 'pending'; step = 'to_return'; }
+        }
+        
+        return {
+            id: e.id, party: e.party, item: e.item, qty: e.qty, notes: e.notes,
+            jobType: job, status: status, actionStep: step, timestamp: e.timestamp || Date.now()
+        };
+    });
+    saveState();
 }
 
 function saveState() {
@@ -37,223 +83,181 @@ function saveState() {
     updatePartyDatalist();
 }
 
-function addEntry(data) {
-    const id = Date.now().toString(36);
+// --- FORM HANDLING ---
+function handleFormSubmit(e) {
+    e.preventDefault();
     
-    let status = 'closed';
-    let actionStep = 'done'; // What needs to happen next?
-
-    // LOGIC: What is the status based on Job Type?
-    if (data.jobType === 'repair') {
-        // I Collected it -> Pending: I need to Return it
-        status = 'pending';
-        actionStep = 'to_return'; 
-    } else if (data.jobType === 'standby') {
-        // I Gave it -> Pending: I need to Collect it back
-        status = 'pending';
-        actionStep = 'to_collect';
-    } else {
-        // Sale/Delivery -> Done immediately
-        status = 'closed';
-        actionStep = 'done';
+    const radio = document.querySelector('input[name="jobType"]:checked');
+    if(!radio) {
+        alert('Please select a Job Type');
+        return;
     }
 
-    const newEntry = {
-        id,
-        party: data.party,
-        item: data.item,
-        qty: data.qty,
-        notes: data.notes,
-        jobType: data.jobType, // repair, standby, sale
-        status: status,        // pending, closed
-        actionStep: actionStep, // to_return, to_collect, done
-        timestamp: Date.now(),
-        history: [{ action: 'Created', date: new Date().toLocaleString() }]
+    const data = {
+        party: document.getElementById('partyInput').value.trim(),
+        item: document.getElementById('itemInput').value.trim(),
+        qty: document.getElementById('qtyInput').value,
+        notes: document.getElementById('notesInput').value.trim(),
+        jobType: radio.value
     };
 
-    // Learn Party Name
-    if (!state.parties.includes(data.party)) {
-        state.parties.push(data.party);
+    if(!data.party || !data.item) {
+        alert('Party Name and Item Name are required');
+        return;
     }
 
-    state.entries.unshift(newEntry);
+    // SMART STATUS LOGIC
+    let status = 'closed';
+    let step = 'done';
+
+    if (data.jobType === 'repair') {
+        status = 'pending'; // Need to return it
+        step = 'to_return';
+    } else if (data.jobType === 'standby') {
+        status = 'pending'; // Need to collect it
+        step = 'to_collect';
+    }
+
+    const entry = {
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+        ...data, status, actionStep: step, timestamp: Date.now()
+    };
+
+    // Add Party to memory
+    if(!state.parties.includes(data.party)) state.parties.push(data.party);
+
+    state.entries.unshift(entry);
     saveState();
+    
+    // Reset & Close
+    e.target.reset();
+    document.getElementById('qtyInput').value = '1';
+    // Default back to repair
+    const repairRadio = document.querySelectorAll('input[name="jobType"]')[0];
+    if(repairRadio) repairRadio.checked = true;
+    
+    closeModal();
     renderList();
-    toggleModal(false);
 }
 
-function updateEntryStatus(id, newAction) {
+// --- CARD ACTIONS ---
+function markDone(id) {
     const entry = state.entries.find(e => e.id === id);
-    if (!entry) return;
-
-    if (newAction === 'mark_done') {
-        entry.status = 'closed';
-        entry.actionStep = 'done';
-    } 
-    else if (newAction === 'delete') {
-        if(!confirm('Delete this permanently?')) return;
-        state.entries = state.entries.filter(e => e.id !== id);
+    if(entry) {
+        if(confirm('Is this job fully completed?')) {
+            entry.status = 'closed';
+            entry.actionStep = 'done';
+            saveState();
+            renderList();
+        }
     }
-
-    saveState();
-    renderList();
 }
 
-// --- DOM & RENDERING ---
+function deleteEntry(id) {
+    if(confirm('Delete this entry permanently?')) {
+        state.entries = state.entries.filter(e => e.id !== id);
+        saveState();
+        renderList();
+    }
+}
 
-const mainList = document.getElementById('mainList');
-const searchInput = document.getElementById('searchInput');
-let currentFilter = 'pending'; // 'pending' or 'history'
+// --- VIEW LOGIC ---
+function switchTab(tab) {
+    currentFilter = tab;
+    
+    const tabP = document.getElementById('tabPending');
+    const tabH = document.getElementById('tabHistory');
+    
+    if(tabP) tabP.classList.toggle('active', tab === 'pending');
+    if(tabH) tabH.classList.toggle('active', tab === 'history');
+    
+    renderList();
+}
 
 function renderList() {
-    const term = searchInput.value.toLowerCase();
-    mainList.innerHTML = '';
+    const list = document.getElementById('mainList');
+    const searchInput = document.getElementById('searchInput');
     
+    if(!list || !searchInput) return;
+
+    const search = searchInput.value.toLowerCase();
+    list.innerHTML = '';
+
     const filtered = state.entries.filter(e => {
-        // 1. Filter by Tab
-        if (currentFilter === 'pending' && e.status !== 'pending') return false;
-        if (currentFilter === 'history' && e.status !== 'closed') return false;
-
-        // 2. Filter by Search
-        const text = `${e.party} ${e.item} ${e.notes}`.toLowerCase();
-        return text.includes(term);
+        const match = (e.party + e.item + (e.notes || '')).toLowerCase().includes(search);
+        if(!match) return false;
+        if(currentFilter === 'pending') return e.status === 'pending';
+        if(currentFilter === 'history') return e.status === 'closed';
+        return true;
     });
 
-    // Sort: Pending items, oldest first (urgent). History items, newest first.
-    filtered.sort((a, b) => {
-        if (currentFilter === 'pending') return a.timestamp - b.timestamp;
-        return b.timestamp - a.timestamp;
-    });
+    // Sort (Pending: Oldest First / History: Newest First)
+    filtered.sort((a, b) => currentFilter === 'pending' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
 
-    if (filtered.length === 0) {
+    if(filtered.length === 0) {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
-        filtered.forEach(entry => {
-            mainList.insertAdjacentHTML('beforeend', createCard(entry));
-        });
+        filtered.forEach(e => list.insertAdjacentHTML('beforeend', getCardHTML(e)));
     }
 }
 
-function createCard(entry) {
-    let badge = '';
-    let actionBtn = '';
-    let iconBg = 'bg-gray-100 text-gray-500';
-
-    // VISUAL LOGIC
-    if (entry.status === 'pending') {
-        if (entry.actionStep === 'to_return') {
-            // REPAIR CASE
-            iconBg = 'bg-indigo-100 text-indigo-600';
-            badge = `<div class="status-badge bg-indigo-50 text-indigo-700"><i class="fas fa-tools"></i> Repairing</div>`;
-            actionBtn = `
-                <button onclick="updateEntryStatus('${entry.id}', 'mark_done')" class="action-btn bg-indigo-600 text-white shadow-lg shadow-indigo-200 flex-1 active:scale-95">
-                    <i class="fas fa-check"></i> Mark Returned
-                </button>`;
-        } else if (entry.actionStep === 'to_collect') {
-            // STANDBY CASE
-            iconBg = 'bg-orange-100 text-orange-600';
-            badge = `<div class="status-badge bg-orange-50 text-orange-700"><i class="fas fa-hand-holding-hand"></i> On Standby</div>`;
-            actionBtn = `
-                <button onclick="updateEntryStatus('${entry.id}', 'mark_done')" class="action-btn bg-black text-white shadow-lg shadow-gray-300 flex-1 active:scale-95">
-                    <i class="fas fa-box-open"></i> Collected Back
-                </button>`;
+function getCardHTML(e) {
+    let icon = '', badge = '', btn = '';
+    
+    if(e.status === 'pending') {
+        if(e.actionStep === 'to_return') {
+            // REPAIR CARD
+            icon = `<div class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fas fa-tools"></i></div>`;
+            badge = `<span class="badge bg-blue-50 text-blue-700">Repairing</span>`;
+            btn = `<button onclick="markDone('${e.id}')" class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-2"><i class="fas fa-check"></i> Mark Returned</button>`;
+        } else {
+            // STANDBY CARD
+            icon = `<div class="h-10 w-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center"><i class="fas fa-hand-holding"></i></div>`;
+            badge = `<span class="badge bg-orange-50 text-orange-700">Standby</span>`;
+            btn = `<button onclick="markDone('${e.id}')" class="flex-1 py-2.5 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-300 active:scale-95 transition-transform flex items-center justify-center gap-2"><i class="fas fa-box-open"></i> Collected Back</button>`;
         }
     } else {
-        // CLOSED
-        iconBg = 'bg-green-100 text-green-600';
-        badge = `<div class="status-badge bg-gray-100 text-gray-500">Done</div>`;
-        actionBtn = `
-            <button onclick="updateEntryStatus('${entry.id}', 'delete')" class="action-btn bg-white border border-red-100 text-red-400 hover:bg-red-50 flex-1">
-                <i class="fas fa-trash"></i> Delete
-            </button>`;
+        // HISTORY CARD
+        icon = `<div class="h-10 w-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center"><i class="fas fa-check"></i></div>`;
+        badge = `<span class="badge bg-slate-100 text-slate-500">Done</span>`;
+        btn = `<button onclick="deleteEntry('${e.id}')" class="flex-1 py-2.5 border border-red-100 text-red-500 rounded-xl font-bold hover:bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash"></i> Delete</button>`;
     }
 
     return `
-    <div class="card-entry animate-[fadeIn_0.3s_ease]">
-        <div class="flex justify-between items-start mb-2">
+    <div class="card-entry bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-3">
+        <div class="flex justify-between items-start mb-3">
             <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-full ${iconBg} flex items-center justify-center text-lg">
-                    <i class="fas ${entry.jobType === 'sale' ? 'fa-box' : (entry.jobType === 'repair' ? 'fa-wrench' : 'fa-clock')}"></i>
-                </div>
+                ${icon}
                 <div>
-                    <h3 class="font-bold text-gray-900 text-lg leading-tight">${entry.party}</h3>
-                    <p class="text-xs text-gray-400 font-medium">${new Date(entry.timestamp).toLocaleDateString()}</p>
+                    <h3 class="font-bold text-lg text-slate-800 leading-tight">${escapeHtml(e.party)}</h3>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase mt-0.5">${new Date(e.timestamp).toLocaleDateString()}</div>
                 </div>
             </div>
-            <div class="flex flex-col items-end gap-1">
-                <span class="text-xl font-bold text-gray-800">x${entry.qty}</span>
+            <div class="text-right">
+                <div class="text-xl font-bold text-slate-800">x${e.qty}</div>
                 ${badge}
             </div>
         </div>
-
-        <div class="bg-gray-50 rounded-xl p-3 mb-3 border border-gray-100">
-            <p class="text-sm font-semibold text-gray-700">${entry.item}</p>
-            ${entry.notes ? `<p class="text-xs text-gray-500 mt-1 italic">"${entry.notes}"</p>` : ''}
+        <div class="bg-slate-50 p-3 rounded-xl mb-3 border border-slate-100">
+            <div class="text-sm font-bold text-slate-700">${escapeHtml(e.item)}</div>
+            ${e.notes ? `<div class="text-xs text-slate-500 mt-1 italic">"${escapeHtml(e.notes)}"</div>` : ''}
         </div>
-
-        <div class="flex gap-2">
-            ${actionBtn}
-        </div>
-    </div>
-    `;
-}
-
-// --- EVENT LISTENERS ---
-
-function setupEventListeners() {
-    // FAB
-    document.getElementById('fabBtn').addEventListener('click', () => toggleModal(true));
-    document.getElementById('closeForm').addEventListener('click', () => toggleModal(false));
-    
-    // Filter Tabs
-    document.querySelectorAll('.filter-chip').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-            e.currentTarget.classList.add('active'); // Use currentTarget to hit the button, not span
-            currentFilter = e.currentTarget.dataset.filter;
-            renderList();
-        });
-    });
-
-    // Search
-    searchInput.addEventListener('input', renderList);
-
-    // Form Submit
-    document.getElementById('entryForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const data = {
-            party: document.getElementById('partyInput').value.trim(),
-            item: document.getElementById('itemInput').value.trim(),
-            qty: document.getElementById('qtyInput').value,
-            notes: document.getElementById('notesInput').value.trim(),
-            jobType: document.querySelector('input[name="jobType"]:checked').value
-        };
-        addEntry(data);
-        e.target.reset();
-        document.getElementById('qtyInput').value = 1;
-    });
-}
-
-function toggleModal(show) {
-    const modal = document.getElementById('formModal');
-    if (show) {
-        modal.classList.remove('hidden');
-        // Small delay to allow display:block to apply before opacity transition
-        setTimeout(() => modal.classList.add('modal-active'), 10);
-        document.getElementById('partyInput').focus();
-    } else {
-        modal.classList.remove('modal-active');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-    }
+        <div class="flex">${btn}</div>
+    </div>`;
 }
 
 function updatePartyDatalist() {
     const dl = document.getElementById('partyList');
+    if(!dl) return;
     dl.innerHTML = '';
-    state.parties.forEach(p => {
+    state.parties.sort().forEach(p => {
         const opt = document.createElement('option');
         opt.value = p;
         dl.appendChild(opt);
     });
+}
+
+function escapeHtml(text) {
+    return text ? text.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
 }
