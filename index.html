@@ -12,109 +12,107 @@
 </head>
 <body class="flex flex-col h-screen overflow-hidden text-slate-800 bg-slate-50">
 
-    <header class="bg-white px-5 pt-12 pb-4 sticky top-0 z-30 shadow-sm border-b border-slate-100">
-        <div class="flex justify-between items-end mb-4">
+    <header class="bg-white px-4 pt-8 pb-3 sticky top-0 z-30 shadow-sm border-b border-slate-100">
+        <div class="flex justify-between items-center mb-3">
             <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1" id="currentDate">TODAY</p>
-                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Operations</h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1" id="currentDate">TODAY</p>
+                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 leading-none">Operations</h1>
             </div>
-            <div class="h-10 w-10 bg-slate-900 rounded-full flex items-center justify-center text-white shadow-lg shadow-slate-200">
+            <div class="h-8 w-8 bg-slate-900 rounded-full flex items-center justify-center text-white shadow-lg shadow-slate-200 text-sm">
                 <i class="fas fa-cubes"></i>
             </div>
         </div>
 
         <div class="relative group">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <i class="fas fa-search text-slate-400"></i>
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-slate-400 text-sm"></i>
             </div>
             <input type="text" id="searchInput" onkeyup="renderList()" 
-                placeholder="Search Party or Item..." 
-                class="block w-full pl-11 pr-4 py-3.5 bg-slate-100 border-none rounded-2xl text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white transition-all shadow-inner">
+                placeholder="Search..." 
+                class="block w-full pl-9 pr-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white transition-all shadow-inner">
         </div>
     </header>
 
-    <div class="px-5 py-3 flex items-center gap-3 bg-white border-b border-slate-100 overflow-x-auto no-scrollbar">
-        <button onclick="setFilter('all')" id="btnFilterAll" class="filter-btn active">
-            All Entries
+    <div class="px-4 py-2 flex items-center gap-2 bg-white border-b border-slate-100 overflow-x-auto no-scrollbar shrink-0">
+        <button onclick="setFilter('all')" id="btnFilterAll" class="filter-btn active text-xs py-1.5 px-3">
+            All
         </button>
-        <button onclick="setFilter('pending')" id="btnFilterPending" class="filter-btn">
-            <span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span>Pending
+        <button onclick="setFilter('pending')" id="btnFilterPending" class="filter-btn text-xs py-1.5 px-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-500 mr-1.5"></span>Pending
         </button>
-        <button onclick="setFilter('closed')" id="btnFilterClosed" class="filter-btn">
-            <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>Closed
+        <button onclick="setFilter('closed')" id="btnFilterClosed" class="filter-btn text-xs py-1.5 px-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>Closed
         </button>
     </div>
 
-    <main class="flex-1 overflow-y-auto px-4 pt-4 pb-32 scroll-smooth" id="mainList">
+    <main class="flex-1 overflow-y-auto px-3 pt-3 pb-24 scroll-smooth" id="mainList">
         </main>
 
     <div id="emptyState" class="hidden fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-20 opacity-50">
-        <div class="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300 text-3xl">
+        <div class="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-300 text-2xl">
             <i class="fas fa-clipboard-list"></i>
         </div>
-        <p class="text-sm font-bold text-slate-400 uppercase tracking-wide">No records found</p>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">No records found</p>
     </div>
 
-    <button onclick="openModal()" class="fixed bottom-8 right-6 h-14 w-14 bg-blue-600 text-white rounded-full shadow-2xl shadow-blue-500/40 flex items-center justify-center text-xl z-40 active:scale-90 transition-transform cursor-pointer hover:bg-blue-700">
+    <button onclick="openModal()" class="fixed bottom-6 right-5 h-12 w-12 bg-blue-600 text-white rounded-full shadow-xl shadow-blue-500/40 flex items-center justify-center text-lg z-40 active:scale-90 transition-transform cursor-pointer hover:bg-blue-700">
         <i class="fas fa-plus"></i>
     </button>
 
     <div id="formModal" class="fixed inset-0 z-50 invisible opacity-0">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" id="formBackdrop" onclick="closeModal()"></div>
         
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] p-0 shadow-2xl h-[92vh] flex flex-col max-w-md mx-auto transition-transform duration-300" id="formSheet">
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-0 shadow-2xl h-[90vh] flex flex-col max-w-md mx-auto transition-transform duration-300" id="formSheet">
             
-            <div class="pt-4 pb-2 flex justify-center" onclick="closeModal()">
-                <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+            <div class="pt-3 pb-2 flex justify-center" onclick="closeModal()">
+                <div class="w-10 h-1 bg-slate-200 rounded-full"></div>
             </div>
             
-            <div class="px-6 pb-4 flex justify-between items-center border-b border-slate-50">
-                <h2 class="text-xl font-bold text-slate-900" id="modalTitle">New Entry</h2>
-                <button type="button" onclick="closeModal()" class="h-8 w-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-200">
+            <div class="px-5 pb-3 flex justify-between items-center border-b border-slate-50">
+                <h2 class="text-lg font-bold text-slate-900" id="modalTitle">New Entry</h2>
+                <button type="button" onclick="closeModal()" class="h-7 w-7 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 active:bg-slate-200 text-sm">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <form id="entryForm" onsubmit="handleFormSubmit(event)" class="flex-1 flex flex-col overflow-y-auto px-6 py-6 pb-safe">
-                
+            <form id="entryForm" onsubmit="handleFormSubmit(event)" class="flex-1 flex flex-col overflow-y-auto px-5 py-5 pb-safe">
                 <input type="hidden" id="editId">
-
-                <div class="space-y-6">
+                <div class="space-y-5">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Party Name</label>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Party Name</label>
                         <input type="text" id="partyInput" list="partyList" required autocomplete="off" 
-                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-bold text-slate-900 text-lg focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-base focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium placeholder:text-slate-300"
                             placeholder="Select or Type...">
                         <datalist id="partyList"></datalist>
                     </div>
 
-                    <div class="flex gap-4">
+                    <div class="flex gap-3">
                         <div class="flex-1">
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Item Details</label>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Item Details</label>
                             <input type="text" id="itemInput" required 
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-semibold text-slate-900 text-sm focus:outline-none focus:border-blue-500 transition-all"
                                 placeholder="e.g. HP Mouse">
                         </div>
-                        <div class="w-24">
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1 text-center">Qty</label>
+                        <div class="w-20">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 text-center">Qty</label>
                             <input type="number" id="qtyInput" value="1" min="1" 
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-4 font-bold text-center text-slate-900 focus:outline-none focus:border-blue-500 transition-all">
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-3 font-bold text-center text-slate-900 text-sm focus:outline-none focus:border-blue-500 transition-all">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Current Status</label>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Current Status</label>
                         <div class="relative">
                             <select id="statusInput" required
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-4 font-bold text-slate-800 focus:outline-none focus:border-blue-500 appearance-none transition-all">
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-blue-500 appearance-none transition-all">
                                 <optgroup label="Action Required (Pending)">
                                     <option value="Collected for Repairing">Collected for Repairing</option>
                                     <option value="Collected for Refilling">Collected for Refilling</option>
                                     <option value="Collected for Replacement">Collected for Replacement</option>
-                                    <option value="Standby Given">Standby Given (Pending Return)</option>
-                                    <option value="Given for Repairing">Given for Repairing (Pending Collection)</option>
-                                    <option value="Given for Refilling">Given for Refilling (Pending Collection)</option>
-                                    <option value="Given for Replacement">Given for Replacement (Pending Collection)</option>
+                                    <option value="Standby Given">Standby Given</option>
+                                    <option value="Given for Repairing">Given for Repairing</option>
+                                    <option value="Given for Refilling">Given for Refilling</option>
+                                    <option value="Given for Replacement">Given for Replacement</option>
                                     <option value="Collected">Collected (Generic)</option>
                                 </optgroup>
                                 <optgroup label="Completed (Closed)">
@@ -122,22 +120,22 @@
                                     <option value="Standby Collected">Standby Collected</option>
                                 </optgroup>
                             </select>
-                            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Notes / Description</label>
-                        <textarea id="notesInput" rows="3" 
-                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
-                            placeholder="Enter serial numbers, fault details..."></textarea>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Notes</label>
+                        <textarea id="notesInput" rows="2" 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
+                            placeholder="Details..."></textarea>
                     </div>
                 </div>
 
-                <div class="mt-auto pt-6">
-                    <button type="submit" id="saveBtn" class="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-xl shadow-slate-900/20 hover:bg-slate-800 active:scale-95 transition-all text-lg flex items-center justify-center gap-2">
+                <div class="mt-auto pt-4">
+                    <button type="submit" id="saveBtn" class="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-xl shadow-slate-900/20 hover:bg-slate-800 active:scale-95 transition-all text-base flex items-center justify-center gap-2">
                         <i class="fas fa-save"></i> Save Record
                     </button>
                 </div>
