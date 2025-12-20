@@ -4,133 +4,142 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Service Tracker Pro</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased h-screen flex flex-col overflow-hidden selection:bg-indigo-100">
+<body class="flex flex-col h-screen overflow-hidden text-slate-800">
 
-    <header class="px-5 pt-4 pb-2 bg-white/80 backdrop-blur-xl sticky top-0 z-30 border-b border-gray-100">
+    <header class="px-5 pt-6 pb-2 bg-white sticky top-0 z-30 border-b border-slate-100 shadow-sm">
         <div class="flex justify-between items-center mb-4">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-gray-900">Operations</h1>
-                <p class="text-xs font-medium text-gray-400 uppercase tracking-wider" id="currentDate">Today</p>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900">Operations</h1>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider" id="currentDate">Today</p>
             </div>
-            <div class="h-10 w-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 shadow-sm">
-                <i class="fas fa-boxes-stacked"></i>
+            <div class="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 shadow-sm">
+                <i class="fas fa-box-open"></i>
             </div>
         </div>
 
-        <div class="relative group">
-            <i class="fas fa-search absolute left-4 top-3.5 text-gray-400 text-sm group-focus-within:text-indigo-500 transition-colors"></i>
-            <input type="text" id="searchInput" placeholder="Search Party, Item..." 
-                class="w-full bg-gray-100/50 border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all placeholder-gray-400">
+        <div class="relative group mb-2">
+            <i class="fas fa-search absolute left-4 top-3.5 text-slate-400 text-sm"></i>
+            <input type="text" id="searchInput" onkeyup="renderList()" placeholder="Search Party, Item..." 
+                class="w-full bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all outline-none placeholder-slate-400">
         </div>
     </header>
 
-    <div class="px-5 py-3 flex gap-3 overflow-x-auto no-scrollbar bg-white/50 backdrop-blur-sm z-20">
-        <button class="filter-chip active" data-filter="pending">
-            <span class="dot bg-orange-500"></span> Pending Work
+    <div class="px-5 py-3 flex gap-3 overflow-x-auto no-scrollbar bg-white/90 backdrop-blur-sm z-20 border-b border-slate-100">
+        <button class="filter-chip active" id="tabPending" onclick="switchTab('pending')">
+            <span class="dot bg-orange-500"></span> Pending
         </button>
-        <button class="filter-chip" data-filter="history">
-            <i class="fas fa-check-circle text-gray-400 mr-1"></i> History
+        <button class="filter-chip" id="tabHistory" onclick="switchTab('history')">
+            <i class="fas fa-history text-xs"></i> History
         </button>
     </div>
 
-    <main class="flex-1 overflow-y-auto px-5 pb-32 pt-2 scroll-smooth" id="mainList">
-        <div id="emptyState" class="hidden flex flex-col items-center justify-center mt-20 opacity-50">
-            <i class="fas fa-clipboard-check text-4xl mb-3 text-gray-300"></i>
-            <p class="text-sm font-medium text-gray-400">All caught up!</p>
-        </div>
-    </main>
+    <main class="flex-1 overflow-y-auto px-5 pt-4 pb-32 scroll-smooth bg-slate-50" id="mainList">
+        </main>
 
-    <button id="fabBtn" class="fixed bottom-8 right-6 h-14 w-14 bg-black text-white rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center text-xl z-40 transition-transform active:scale-90 hover:scale-105">
+    <div id="emptyState" class="hidden fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-0 mt-20 opacity-50">
+        <i class="fas fa-clipboard-check text-5xl mb-4 text-slate-300"></i>
+        <p class="text-sm font-semibold text-slate-400">No items found</p>
+    </div>
+
+    <button onclick="openModal()" class="fixed bottom-8 right-6 h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl shadow-slate-500/30 flex items-center justify-center text-xl z-40 active:scale-90 transition-transform cursor-pointer">
         <i class="fas fa-plus"></i>
     </button>
 
-    <div id="formModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity opacity-0" id="formBackdrop"></div>
+    <div id="formModal" class="fixed inset-0 z-50 invisible opacity-0">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="formBackdrop" onclick="closeModal()"></div>
         
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-out max-w-md mx-auto h-[85vh] flex flex-col" id="formSheet">
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 shadow-2xl h-[90vh] flex flex-col max-w-md mx-auto" id="formSheet">
             
-            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
             
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold" id="formTitle">New Entry</h2>
-                <button type="button" id="closeForm" class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                <h2 class="text-xl font-bold text-slate-900">New Entry</h2>
+                <button type="button" onclick="closeModal()" class="h-8 w-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 active:bg-slate-200">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <form id="entryForm" class="flex-1 flex flex-col space-y-5 overflow-y-auto pb-safe">
-                <input type="hidden" id="editId">
-
+            <form id="entryForm" onsubmit="handleFormSubmit(event)" class="flex-1 flex flex-col space-y-6 overflow-y-auto pb-safe px-1">
+                
                 <div>
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">What did you do?</label>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Type of Job</label>
                     <div class="grid grid-cols-2 gap-3">
-                        <label class="cursor-pointer">
+                        <label class="cursor-pointer relative">
                             <input type="radio" name="jobType" value="repair" checked class="peer hidden">
-                            <div class="p-4 rounded-xl border-2 border-gray-100 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all text-center">
-                                <div class="text-2xl mb-1">🛠️</div>
-                                <div class="text-xs font-bold text-gray-600 peer-checked:text-indigo-700">Repair/Refill</div>
-                                <div class="text-[10px] text-gray-400 leading-tight mt-1">I collected it, need to return it later</div>
+                            <div class="p-4 rounded-2xl border-2 border-slate-100 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all text-center h-full">
+                                <div class="text-2xl mb-2">🛠️</div>
+                                <div class="text-xs font-bold text-slate-700 peer-checked:text-blue-700">Repair</div>
+                                <div class="text-[10px] text-slate-400 mt-1">Collect &rarr; Return</div>
                             </div>
+                            <div class="hidden peer-checked:block absolute top-2 right-2 text-blue-500"><i class="fas fa-check-circle"></i></div>
                         </label>
-                        <label class="cursor-pointer">
+                        
+                        <label class="cursor-pointer relative">
                             <input type="radio" name="jobType" value="standby" class="peer hidden">
-                            <div class="p-4 rounded-xl border-2 border-gray-100 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition-all text-center">
-                                <div class="text-2xl mb-1">🤝</div>
-                                <div class="text-xs font-bold text-gray-600 peer-checked:text-orange-700">Given Standby</div>
-                                <div class="text-[10px] text-gray-400 leading-tight mt-1">I gave it, need to take it back</div>
+                            <div class="p-4 rounded-2xl border-2 border-slate-100 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition-all text-center h-full">
+                                <div class="text-2xl mb-2">🤝</div>
+                                <div class="text-xs font-bold text-slate-700 peer-checked:text-orange-700">Standby</div>
+                                <div class="text-[10px] text-slate-400 mt-1">Give &rarr; Collect</div>
                             </div>
+                            <div class="hidden peer-checked:block absolute top-2 right-2 text-orange-500"><i class="fas fa-check-circle"></i></div>
                         </label>
-                        <label class="cursor-pointer col-span-2">
+
+                        <label class="cursor-pointer relative col-span-2">
                             <input type="radio" name="jobType" value="sale" class="peer hidden">
-                            <div class="p-3 rounded-xl border-2 border-gray-100 peer-checked:border-green-500 peer-checked:bg-green-50 transition-all flex items-center gap-3">
-                                <div class="text-xl">📦</div>
-                                <div class="text-left">
-                                    <div class="text-xs font-bold text-gray-600 peer-checked:text-green-700">Just Delivery / Sale</div>
-                                    <div class="text-[10px] text-gray-400">Transaction done immediately</div>
+                            <div class="p-3 rounded-2xl border-2 border-slate-100 peer-checked:border-green-500 peer-checked:bg-green-50 transition-all flex items-center gap-4">
+                                <div class="text-xl pl-2">📦</div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-700 peer-checked:text-green-700">Direct Sale / Delivery</div>
+                                    <div class="text-[10px] text-slate-400">Done immediately</div>
                                 </div>
                             </div>
+                            <div class="hidden peer-checked:block absolute top-1/2 -translate-y-1/2 right-4 text-green-500"><i class="fas fa-check-circle"></i></div>
                         </label>
                     </div>
                 </div>
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">PARTY NAME</label>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">PARTY NAME</label>
                         <input type="text" id="partyInput" list="partyList" required autocomplete="off" 
-                            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-semibold text-gray-800 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:font-normal"
-                            placeholder="e.g. Sarthak Hospital">
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-medium"
+                            placeholder="Select or Type Name...">
                         <datalist id="partyList"></datalist>
                     </div>
 
                     <div class="flex gap-3">
                         <div class="flex-1">
-                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">ITEM DETAILS</label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">ITEM DETAILS</label>
                             <input type="text" id="itemInput" required 
-                                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-medium text-gray-800 focus:outline-none focus:border-indigo-500 transition-all"
-                                placeholder="e.g. HP Laserjet 1020">
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+                                placeholder="e.g. HP Mouse">
                         </div>
                         <div class="w-20">
-                            <label class="block text-xs font-bold text-gray-500 mb-1 ml-1 text-center">QTY</label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1 text-center">QTY</label>
                             <input type="number" id="qtyInput" value="1" min="1" 
-                                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-3 font-bold text-center text-gray-800 focus:outline-none focus:border-indigo-500 transition-all">
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-3.5 font-bold text-center text-slate-900 focus:outline-none focus:border-blue-500 transition-all">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">NOTES (OPTIONAL)</label>
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5 ml-1">NOTES</label>
                         <textarea id="notesInput" rows="2" 
-                            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-indigo-500 transition-all resize-none"
-                            placeholder="Serial number, specific fault..."></textarea>
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 transition-all resize-none"
+                            placeholder="Serial number, faults, etc..."></textarea>
                     </div>
                 </div>
 
-                <div class="mt-auto pt-4">
-                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 active:scale-98 transition-all">
+                <div class="mt-auto pt-2">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all text-lg">
                         Save Entry
                     </button>
                 </div>
