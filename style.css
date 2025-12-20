@@ -1,17 +1,10 @@
 /* style.css */
-
 body {
     font-family: 'Inter', sans-serif;
     -webkit-tap-highlight-color: transparent;
-    background-color: #f8fafc;
 }
 
-/* Smooth scrolling */
-html {
-    scroll-behavior: smooth;
-}
-
-/* Hide Scrollbar */
+/* Hide Scrollbar but keep functionality */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
@@ -20,59 +13,39 @@ html {
     scrollbar-width: none;
 }
 
-/* Mobile Safe Area */
 .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 
-/* Filter Tabs */
-.filter-chip {
-    padding: 8px 16px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 9999px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.filter-chip.active {
-    background: #0f172a; /* Slate 900 */
-    color: white;
-    border-color: #0f172a;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-}
-
 /* Card Animation */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(15px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 .card-entry {
-    animation: fadeIn 0.3s ease-out forwards;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Status Badges */
-.badge {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 4px 8px;
-    border-radius: 6px;
-    letter-spacing: 0.05em;
+/* Filter Buttons */
+.filter-btn {
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.filter-btn.active {
+    background: #0f172a;
+    color: white;
+    box-shadow: 0 4px 10px -2px rgba(15, 23, 42, 0.2);
 }
 
 /* Modal Transitions */
@@ -86,20 +59,28 @@ html {
     transition-delay: 0s;
 }
 
-#formBackdrop {
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-#formModal.open #formBackdrop {
-    opacity: 1;
-}
-
 #formSheet {
     transform: translateY(100%);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #formModal.open #formSheet {
     transform: translateY(0);
+}
+
+/* Form Styling */
+select {
+    background-image: none;
+}
+
+/* Card Visuals */
+.status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
