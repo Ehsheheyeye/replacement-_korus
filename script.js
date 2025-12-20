@@ -6,7 +6,7 @@ let state = { entries: [], parties: [] };
 let activeFilter = 'all'; 
 
 // --- CONFIGURATION FOR STATUS ---
-// FIX: Applied colors to 'cardStyle' so the whole background changes
+// Colors applied to 'cardStyle' for full card coloring
 const STATUS_CONFIG = {
     // 1. REPAIRING (Blue)
     'Collected for Repairing':   { 
@@ -16,7 +16,7 @@ const STATUS_CONFIG = {
         icon: 'fa-tools' 
     },
     
-    // 2. REFILLING (Purple/Fuchsia) - Distinct from Blue
+    // 2. REFILLING (Purple/Fuchsia)
     'Collected for Refilling':   { 
         type: 'pending', 
         cardStyle: 'bg-fuchsia-50 border-fuchsia-200', 
@@ -48,39 +48,14 @@ const STATUS_CONFIG = {
         icon: 'fa-check-circle' 
     },
     
-    // 6. GIVEN FOR... (Pending Actions - Orange/Amber)
-    'Given for Repairing':       { 
-        type: 'pending', 
-        cardStyle: 'bg-orange-50 border-orange-200', 
-        badgeStyle: 'bg-white text-orange-700 border-orange-200',
-        icon: 'fa-shipping-fast' 
-    },
-    'Given for Refilling':       { 
-        type: 'pending', 
-        cardStyle: 'bg-amber-50 border-amber-200', 
-        badgeStyle: 'bg-white text-amber-700 border-amber-200',
-        icon: 'fa-shipping-fast' 
-    },
-    'Given for Replacement':     { 
-        type: 'pending', 
-        cardStyle: 'bg-orange-50 border-orange-200', 
-        badgeStyle: 'bg-white text-orange-700 border-orange-200',
-        icon: 'fa-shipping-fast' 
-    },
+    // 6. GIVEN ACTIONS (Orange/Amber)
+    'Given for Repairing':       { type: 'pending', cardStyle: 'bg-orange-50 border-orange-200', badgeStyle: 'bg-white text-orange-700 border-orange-200', icon: 'fa-shipping-fast' },
+    'Given for Refilling':       { type: 'pending', cardStyle: 'bg-amber-50 border-amber-200', badgeStyle: 'bg-white text-amber-700 border-amber-200', icon: 'fa-shipping-fast' },
+    'Given for Replacement':     { type: 'pending', cardStyle: 'bg-orange-50 border-orange-200', badgeStyle: 'bg-white text-orange-700 border-orange-200', icon: 'fa-shipping-fast' },
     
     // 7. STANDBY (Cyan/Teal)
-    'Standby Given':             { 
-        type: 'pending', 
-        cardStyle: 'bg-cyan-50 border-cyan-200', 
-        badgeStyle: 'bg-white text-cyan-700 border-cyan-200',
-        icon: 'fa-clock' 
-    },
-    'Standby Collected':         { 
-        type: 'closed',  
-        cardStyle: 'bg-teal-50 border-teal-200', 
-        badgeStyle: 'bg-white text-teal-700 border-teal-200',
-        icon: 'fa-check-double' 
-    }
+    'Standby Given':             { type: 'pending', cardStyle: 'bg-cyan-50 border-cyan-200', badgeStyle: 'bg-white text-cyan-700 border-cyan-200', icon: 'fa-clock' },
+    'Standby Collected':         { type: 'closed',  cardStyle: 'bg-teal-50 border-teal-200', badgeStyle: 'bg-white text-teal-700 border-teal-200', icon: 'fa-check-double' }
 };
 
 // --- INIT ---
@@ -100,7 +75,6 @@ function loadState() {
         if (raw) {
             state = JSON.parse(raw);
         } else {
-            // Attempt migration from older versions
             const oldV4 = localStorage.getItem('service_tracker_pro_v4');
             const oldV3 = localStorage.getItem('service_tracker_fixed_v3');
             if (oldV4) state = JSON.parse(oldV4);
@@ -146,9 +120,8 @@ function migrateV3(oldData) {
 function openModal(editId = null) {
     const modal = document.getElementById('formModal');
     const title = document.getElementById('modalTitle');
-    const form = document.getElementById('entryForm');
-    const editInput = document.getElementById('editId');
     const saveBtn = document.getElementById('saveBtn');
+    const editInput = document.getElementById('editId');
 
     modal.classList.add('open');
 
@@ -157,7 +130,7 @@ function openModal(editId = null) {
         if(!entry) return closeModal();
 
         title.innerText = 'Edit Entry';
-        saveBtn.innerHTML = '<i class="fas fa-check"></i> Update Record';
+        saveBtn.innerHTML = '<i class="fas fa-check"></i> Update';
         
         editInput.value = entry.id;
         document.getElementById('partyInput').value = entry.party;
@@ -168,7 +141,7 @@ function openModal(editId = null) {
     } else {
         title.innerText = 'New Entry';
         saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Record';
-        form.reset();
+        document.getElementById('entryForm').reset();
         editInput.value = '';
         document.getElementById('qtyInput').value = 1;
         document.getElementById('statusInput').selectedIndex = 0;
@@ -261,7 +234,6 @@ function renderList() {
 }
 
 function createCard(e) {
-    // Default Fallback
     const defaultConfig = { 
         type: 'pending', 
         cardStyle: 'bg-slate-50 border-slate-200', 
@@ -272,40 +244,37 @@ function createCard(e) {
     const config = STATUS_CONFIG[e.status] || defaultConfig;
     const dateStr = new Date(e.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    // HTML Structure
-    // 1. Outer Div: Uses config.cardStyle for full background color
-    // 2. Inner Item Box: Uses bg-white/80 to stand out against the color
+    // NEW COMPACT LAYOUT
     return `
-    <div class="card-entry ${config.cardStyle} p-5 rounded-3xl border shadow-sm mb-4 relative">
+    <div class="card-entry ${config.cardStyle} p-3.5 rounded-2xl border shadow-sm mb-3 relative">
+        
         <div class="flex justify-between items-start mb-2">
-            <div>
-                <h3 class="font-extrabold text-lg text-slate-800 leading-tight">${escapeHtml(e.party)}</h3>
-                <div class="text-[11px] font-bold text-slate-400 uppercase mt-1 tracking-wide">${dateStr}</div>
+            <div class="overflow-hidden pr-2">
+                <h3 class="font-bold text-base text-slate-900 leading-tight truncate">${escapeHtml(e.party)}</h3>
+                <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-wide">${dateStr}</div>
             </div>
-            
-            <div class="flex flex-col items-end gap-2">
-                <span class="text-xl font-black text-slate-900 mb-1">x${e.qty}</span>
-                
-                <div class="flex flex-col gap-2">
-                    <button onclick="openModal('${e.id}')" class="text-xs font-bold text-blue-600 bg-white/80 px-3 py-1.5 rounded-lg active:scale-95 border border-blue-100 shadow-sm transition-all w-20 text-center">
-                        <i class="fas fa-pen mr-1"></i> Edit
-                    </button>
-
-                    <button onclick="deleteEntry('${e.id}')" class="text-xs font-bold text-red-500 bg-white/80 px-3 py-1.5 rounded-lg active:scale-95 border border-red-100 shadow-sm transition-all w-20 text-center">
-                        <i class="fas fa-trash mr-1"></i> Delete
-                    </button>
-                </div>
+            <div class="flex-shrink-0 bg-white/60 px-2 py-0.5 rounded-md border border-black/5">
+                <span class="text-sm font-black text-slate-900">x${e.qty}</span>
             </div>
         </div>
 
-        <div class="bg-white p-3.5 rounded-2xl mb-3 border border-white/50 shadow-sm">
-            <div class="text-sm font-bold text-slate-700 leading-snug">${escapeHtml(e.item)}</div>
-            ${e.notes ? `<div class="text-xs text-slate-500 mt-1.5 italic border-t border-slate-100 pt-1.5">"${escapeHtml(e.notes)}"</div>` : ''}
+        <div class="bg-white p-2.5 rounded-xl mb-3 border border-white/50 shadow-sm">
+            <div class="text-sm font-bold text-slate-800 leading-snug break-words">${escapeHtml(e.item)}</div>
+            ${e.notes ? `<div class="text-xs text-slate-500 mt-1 italic border-t border-slate-100 pt-1 truncate">"${escapeHtml(e.notes)}"</div>` : ''}
         </div>
 
-        <div class="flex items-center justify-between mt-2">
-            <div class="status-badge border ${config.badgeStyle}">
-                <i class="fas ${config.icon}"></i> ${e.status}
+        <div class="flex items-center justify-between mt-1">
+            <div class="status-badge border ${config.badgeStyle} py-1 px-2 text-[9px]">
+                <i class="fas ${config.icon}"></i> <span class="truncate max-w-[120px] inline-block align-bottom">${e.status}</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('${e.id}')" class="h-7 w-7 flex items-center justify-center rounded-full bg-white text-blue-600 border border-blue-100 shadow-sm active:scale-95 transition-transform">
+                    <i class="fas fa-pen text-xs"></i>
+                </button>
+                <button onclick="deleteEntry('${e.id}')" class="h-7 w-7 flex items-center justify-center rounded-full bg-white text-red-500 border border-red-100 shadow-sm active:scale-95 transition-transform">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
             </div>
         </div>
     </div>
